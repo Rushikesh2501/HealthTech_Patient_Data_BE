@@ -51,7 +51,7 @@ class Encounter(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(
         Enum(
             EncounterStatus,
-            name="encounter_status_enum",
+            native_enum=False,
             values_callable=lambda obj: [e.value for e in obj],
         ),
         default=EncounterStatus.COMPLETED,

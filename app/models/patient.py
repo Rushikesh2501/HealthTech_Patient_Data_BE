@@ -3,7 +3,7 @@ Contains strictly anonymized clinical identifiers and demographics.
 """
 
 from datetime import date, datetime, timezone
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import Date, Enum, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -26,6 +26,7 @@ class Patient(Base, TimestampMixin):
         nullable=False,
         comment="Anonymized ID format e.g. PT-0001",
     )
+    name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     age: Mapped[int] = mapped_column(Integer, nullable=False)
     gender: Mapped[str] = mapped_column(
         Enum(

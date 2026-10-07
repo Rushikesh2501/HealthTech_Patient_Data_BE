@@ -47,6 +47,7 @@ class PatientService:
 
         patient = Patient(
             patient_code=code,
+            name=data.name,
             age=data.age,
             gender=data.gender.value,
             registration_date=reg_date,
@@ -63,12 +64,13 @@ class PatientService:
             entity_id=str(created.id),
             request_id=request_id,
             ip_address=ip_address,
-            details=f"Anonymized patient created with code {created.patient_code}",
+            details=f"Patient created with code {created.patient_code}",
         )
 
         return PatientResponse(
             id=created.id,
             patientId=created.patient_code,
+            name=created.name,
             age=created.age,
             gender=created.gender,  # type: ignore
             registrationDate=created.registration_date,
@@ -96,6 +98,7 @@ class PatientService:
                 PatientResponse(
                     id=p.id,
                     patientId=p.patient_code,
+                    name=p.name,
                     age=p.age,
                     gender=p.gender,  # type: ignore
                     registrationDate=p.registration_date,
@@ -130,6 +133,7 @@ class PatientService:
         return PatientResponse(
             id=patient.id,
             patientId=patient.patient_code,
+            name=patient.name,
             age=patient.age,
             gender=patient.gender,  # type: ignore
             registrationDate=patient.registration_date,
@@ -152,6 +156,8 @@ class PatientService:
         if not patient:
             raise NotFoundError(f"Patient with ID {patient_id} not found", code="PATIENT_NOT_FOUND")
 
+        if data.name is not None:
+            patient.name = data.name
         if data.age is not None:
             patient.age = data.age
         if data.gender is not None:
@@ -178,6 +184,7 @@ class PatientService:
         return PatientResponse(
             id=updated.id,
             patientId=updated.patient_code,
+            name=updated.name,
             age=updated.age,
             gender=updated.gender,  # type: ignore
             registrationDate=updated.registration_date,

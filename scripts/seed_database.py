@@ -82,15 +82,24 @@ def seed_database():
             print("Creating 25 anonymized patient profiles...")
             base_date = datetime.now(timezone.utc).date() - timedelta(days=90)
             genders = [Gender.MALE, Gender.FEMALE, Gender.OTHER]
+            sample_names = [
+                "Aarav Sharma", "Pooja Patel", "Ramesh Kumar", "Sunita Devi", "Vikram Singh",
+                "Ananya Iyer", "Rajesh Verma", "Meera Joshi", "Amitabh Das", "Deepika Reddy",
+                "Suresh Nair", "Kavita Rao", "Manoj Gupta", "Rekha Menon", "Sanjay Choudhury",
+                "Priya Kulkarni", "Arjun Bhat", "Geeta Pillai", "Naveen Chawla", "Shobha Roy",
+                "Alok Mishra", "Divya Sen", "Kishore Pandey", "Preeti Saxena", "Harish Sethi"
+            ]
 
             for i in range(1, 26):
                 pt_code = f"PT-{i:04d}"
                 age = random.choice([7, 12, 19, 24, 32, 45, 52, 61, 74])
                 gender = random.choice(genders)
                 reg_date = base_date + timedelta(days=random.randint(0, 85))
+                name = sample_names[i - 1]
 
                 p = Patient(
                     patient_code=pt_code,
+                    name=name,
                     age=age,
                     gender=gender.value,
                     registration_date=reg_date,
@@ -99,10 +108,25 @@ def seed_database():
                 db.add(p)
                 db.flush()
                 patient_objects.append(p)
-            print("25 anonymized patients created.")
+            print("25 patient profiles created.")
         else:
-            patient_objects = db.query(Patient).all()
+            patient_objects = db.query(Patient).order_by(Patient.id).all()
             print(f"Existing {len(patient_objects)} patients found.")
+            sample_names = [
+                "Aarav Sharma", "Pooja Patel", "Ramesh Kumar", "Sunita Devi", "Vikram Singh",
+                "Ananya Iyer", "Rajesh Verma", "Meera Joshi", "Amitabh Das", "Deepika Reddy",
+                "Suresh Nair", "Kavita Rao", "Manoj Gupta", "Rekha Menon", "Sanjay Choudhury",
+                "Priya Kulkarni", "Arjun Bhat", "Geeta Pillai", "Naveen Chawla", "Shobha Roy",
+                "Alok Mishra", "Divya Sen", "Kishore Pandey", "Preeti Saxena", "Harish Sethi"
+            ]
+            updated_count = 0
+            for idx, p in enumerate(patient_objects):
+                if not p.name:
+                    p.name = sample_names[idx % len(sample_names)]
+                    updated_count += 1
+            if updated_count > 0:
+                db.flush()
+                print(f"Assigned names to {updated_count} existing patients.")
 
         # 3. Clinical Encounters
         existing_encounter_count = db.query(Encounter).count()

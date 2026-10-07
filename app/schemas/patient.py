@@ -13,6 +13,7 @@ from app.core.constants import Gender, PatientStatus
 class PatientBase(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
+    name: Optional[str] = Field(default=None, max_length=150, description="Patient name")
     age: int = Field(ge=0, le=125, description="Patient age in years")
     gender: Gender
     status: PatientStatus = PatientStatus.ACTIVE
@@ -35,6 +36,7 @@ class PatientCreate(PatientBase):
 class PatientUpdate(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
+    name: Optional[str] = Field(default=None, max_length=150)
     age: Optional[int] = Field(default=None, ge=0, le=125)
     gender: Optional[Gender] = None
     status: Optional[PatientStatus] = None
@@ -45,6 +47,7 @@ class PatientResponse(BaseModel):
 
     id: int
     patient_code: str = Field(alias="patientId")
+    name: Optional[str] = None
     age: int
     gender: Gender
     registration_date: date = Field(alias="registrationDate")

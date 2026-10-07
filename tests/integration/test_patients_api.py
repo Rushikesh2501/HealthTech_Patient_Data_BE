@@ -33,6 +33,7 @@ def test_list_patients_unversioned_route(
 
 def test_create_patient(client: TestClient, clinician_token: str):
     payload = {
+        "name": "Aarav Sharma",
         "age": 28,
         "gender": "Female",
         "status": "active",
@@ -45,6 +46,7 @@ def test_create_patient(client: TestClient, clinician_token: str):
     assert response.status_code == 201
     data = response.json()
     assert data["patientId"].startswith("PT-")
+    assert data["name"] == "Aarav Sharma"
     assert data["age"] == 28
     assert data["gender"] == "Female"
 
@@ -62,11 +64,12 @@ def test_get_patient_by_id(client: TestClient, clinician_token: str, sample_pati
 def test_update_patient(client: TestClient, clinician_token: str, sample_patient: Patient):
     response = client.patch(
         f"/api/v1/patients/{sample_patient.id}",
-        json={"age": 36, "status": "inactive"},
+        json={"name": "Aarav S. Sharma", "age": 36, "status": "inactive"},
         headers={"Authorization": f"Bearer {clinician_token}"},
     )
     assert response.status_code == 200
     data = response.json()
+    assert data["name"] == "Aarav S. Sharma"
     assert data["age"] == 36
     assert data["status"] == "inactive"
 

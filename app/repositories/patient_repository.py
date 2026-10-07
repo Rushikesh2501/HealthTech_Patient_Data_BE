@@ -29,7 +29,12 @@ class PatientRepository:
 
         if filters.search:
             search_pattern = f"%{filters.search.strip()}%"
-            stmt = stmt.where(Patient.patient_code.ilike(search_pattern))
+            stmt = stmt.where(
+                or_(
+                    Patient.patient_code.ilike(search_pattern),
+                    Patient.name.ilike(search_pattern),
+                )
+            )
 
         if filters.gender:
             stmt = stmt.where(Patient.gender == filters.gender)
