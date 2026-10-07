@@ -106,18 +106,6 @@ API Documentation will be live at:
 
 ---
 
-## 🔐 Default Development Credentials
-
-Seeded via `python scripts/seed_database.py`:
-
-| Role | Email | Password | Primary Permissions |
-|---|---|---|---|
-| **Admin** | `admin@healthtech.local` | `HealthTech123!` | Full system access, audit logs, deletes, users |
-| **Clinician** | `doctor@healthtech.local` | `HealthTech123!` | Read/create/update patients & encounters, analytics, AI |
-| **Nurse** | `nurse@healthtech.local` | `HealthTech123!` | Read patients, manage encounters (no deletes, no AI, no users) |
-
----
-
 ## 🧪 Testing
 
 Execute test suite with pytest:
