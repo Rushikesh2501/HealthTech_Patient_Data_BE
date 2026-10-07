@@ -4,6 +4,7 @@ from enum import Enum
 
 
 class UserRole(str, Enum):
+    SUPERADMIN = "superadmin"
     ADMIN = "admin"
     CLINICIAN = "clinician"
     NURSE = "nurse"
@@ -77,6 +78,7 @@ class Permission(str, Enum):
 
 # Mapping from UserRole to set of Permissions
 ROLE_PERMISSIONS: dict[UserRole, set[Permission]] = {
+    UserRole.SUPERADMIN: set(Permission),
     UserRole.ADMIN: {
         Permission.PATIENTS_READ,
         Permission.PATIENTS_CREATE,

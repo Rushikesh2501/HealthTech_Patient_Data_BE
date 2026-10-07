@@ -28,7 +28,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=100), nullable=False),
         sa.Column(
             "role",
-            sa.Enum("admin", "clinician", "nurse", name="user_role_enum"),
+            sa.Enum("superadmin", "admin", "clinician", "nurse", name="user_role_enum"),
             nullable=False,
         ),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true"),

@@ -7,6 +7,11 @@ from app.core.exceptions import ForbiddenError
 from app.core.permissions import check_permission, has_permission
 
 
+def test_superadmin_has_all_permissions():
+    for perm in Permission:
+        assert has_permission(UserRole.SUPERADMIN, perm) is True
+
+
 def test_admin_has_all_permissions():
     for perm in Permission:
         assert has_permission(UserRole.ADMIN, perm) is True

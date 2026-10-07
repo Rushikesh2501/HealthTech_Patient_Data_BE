@@ -2,22 +2,30 @@
 """Bootstrap script for initial Superadmin and Admin users in HealthTech Dashboard.
 
 Security guarantees:
-1. Passwords are never stored in plaintext - hashed with bcrypt.
-2. Passwords and password hashes are never printed to terminal or logs.
-3. Loads DATABASE_URL securely from .env.development / environment config.
+1. Passwords are never hardcoded in plaintext.
+2. Credentials can be passed via CLI arguments or environment variables:
+   - SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD
+   - ADMIN_EMAIL / ADMIN_PASSWORD
+   If not provided, a cryptographically secure random password is generated and displayed once.
+3. Loads DATABASE_URL securely from .env / environment config.
 4. Uses atomic SQLAlchemy transaction with automatic rollback on error.
 5. Idempotent: safe to run multiple times without duplicating accounts.
 
 Usage:
     python scripts/create_initial_users.py
+    python scripts/create_initial_users.py --role superadmin --email admin@example.com --password SecurePass123!
+    python scripts/create_initial_users.py --force-update
 """
 
+import argparse
+import os
+import secrets
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
-# 1. Resolve project root and load environment variables from .env.development
+# 1. Resolve project root and load environment variables
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -25,172 +33,118 @@ if str(PROJECT_ROOT) not in sys.path:
 from dotenv import load_dotenv  # noqa: E402
 
 env_development = PROJECT_ROOT / ".env.development"
+env_local = PROJECT_ROOT / ".env"
 if env_development.exists():
-    load_dotenv(dotenv_path=env_development, override=True)
+    load_dotenv(dotenv_path=env_development, override=False)
+if env_local.exists():
+    load_dotenv(dotenv_path=env_local, override=True)
 else:
     load_dotenv(override=True)
 
-# 2. Reuse existing project configuration, database engine, and password hashing utility
-from sqlalchemy import inspect, text  # noqa: E402
+# 2. Project configuration, database engine, models, and password hashing
+from sqlalchemy import inspect  # noqa: E402
 from sqlalchemy.exc import SQLAlchemyError  # noqa: E402
 
+from app.core.constants import UserRole  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.db.database import SessionLocal, engine  # noqa: E402
-
-# Credentials definition (kept strictly in memory, never logged)
-INITIAL_USERS = [
-    {
-        "role_name": "superadmin",
-        "email": "superadmin@3401.com",
-        "name": "Super Administrator",
-        "password": "Superadmin3401",
-        "label": "Superadmin",
-    },
-    {
-        "role_name": "admin",
-        "email": "admin@3401.com",
-        "name": "System Administrator",
-        "password": "Admin3401",
-        "label": "Admin",
-    },
-]
+from app.models.user import User  # noqa: E402
 
 
-def bootstrap_users() -> None:
-    """Connects to database, validates roles, and creates initial users safely."""
-    # Ensure database is accessible
+def get_default_users() -> List[dict[str, Any]]:
+    """Resolve initial users from environment variables or generate secure passwords."""
+    superadmin_email = os.getenv("SUPERADMIN_EMAIL", "superadmin@healthtech.local").strip()
+    superadmin_password = os.getenv("SUPERADMIN_PASSWORD")
+    if not superadmin_password:
+        superadmin_password = secrets.token_urlsafe(16)
+        print(f"[SECURITY] Generated initial password for {superadmin_email}: {superadmin_password}")
+
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@healthtech.local").strip()
+    admin_password = os.getenv("ADMIN_PASSWORD")
+    if not admin_password:
+        admin_password = secrets.token_urlsafe(16)
+        print(f"[SECURITY] Generated initial password for {admin_email}: {admin_password}")
+
+    return [
+        {
+            "role": UserRole.SUPERADMIN,
+            "email": superadmin_email,
+            "name": "Super Administrator",
+            "password": superadmin_password,
+            "label": "Superadmin",
+        },
+        {
+            "role": UserRole.ADMIN,
+            "email": admin_email,
+            "name": "System Administrator",
+            "password": admin_password,
+            "label": "Admin",
+        },
+    ]
+
+
+def bootstrap_users(users_spec: List[dict[str, Any]], force_update: bool = False) -> None:
+    """Connects to database, validates tables, and creates initial users safely."""
     try:
         with engine.connect() as conn:
+            from sqlalchemy import text
+
             conn.execute(text("SELECT 1"))
     except Exception as exc:
-        print(
-            f"Error: Could not connect to PostgreSQL database. Check DATABASE_URL configuration: {exc}"
-        )
+        print("Error: Could not connect to PostgreSQL database.")
+        print(f"Details: {exc}")
+        print("\nPlease verify DATABASE_URL in your .env / .env.development configuration.")
         sys.exit(1)
 
     inspector = inspect(engine)
     table_names = set(inspector.get_table_names())
 
-    # Verify required tables exist
-    if "roles" not in table_names:
-        print(
-            "Error: 'roles' table does not exist in the database. Ensure database migrations or seed scripts have run."
-        )
-        sys.exit(1)
-
     if "users" not in table_names:
         print(
-            "Error: 'users' table does not exist in the database. Ensure database migrations or seed scripts have run."
+            "Error: 'users' table does not exist in the database. "
+            "Please run database migrations first:\n"
+            "    alembic upgrade head"
         )
         sys.exit(1)
-
-    role_cols = {c["name"] for c in inspector.get_columns("roles")}
-    name_col = "name" if "name" in role_cols else "slug" if "slug" in role_cols else None
-    if not name_col:
-        print("Error: Could not find role name column in 'roles' table.")
-        sys.exit(1)
-
-    user_cols = {c["name"] for c in inspector.get_columns("users")}
 
     session = SessionLocal()
     try:
-        # Step 3 & 4: Find roles 'superadmin' and 'admin'
-        roles_map: dict[str, Any] = {}
-        for user_spec in INITIAL_USERS:
-            target_role = user_spec["role_name"]
-            role_record = (
-                session.execute(
-                    text(f"SELECT id, {name_col} FROM roles WHERE {name_col} = :role_name"),
-                    {"role_name": target_role},
-                )
-                .mappings()
-                .first()
-            )
-
-            # Step 5: Stop execution if either role does not exist
-            if not role_record:
-                print(f"Error: Role '{target_role}' does not exist in the database.")
-                sys.exit(1)
-
-            roles_map[target_role] = role_record["id"]
-
-        # Step 6 & 7: Check if users already exist
-        users_to_create = []
-        for user_spec in INITIAL_USERS:
-            email = user_spec["email"]
-            label = user_spec["label"]
-            existing_user = (
-                session.execute(
-                    text("SELECT id, email FROM users WHERE email = :email"),
-                    {"email": email},
-                )
-                .mappings()
-                .first()
-            )
-
-            # Step 8: Safe message if user already exists
-            if existing_user:
-                print(f"{label} user already exists.")
-            else:
-                users_to_create.append(user_spec)
-
-        # If all users already exist, exit cleanly
-        if not users_to_create:
-            return
-
-        # Step 9 & 10: Insert within safe SQLAlchemy transaction
         with session.begin():
-            for user_spec in users_to_create:
-                role_id = roles_map[user_spec["role_name"]]
-                password_hash = hash_password(user_spec["password"])
+            for spec in users_spec:
+                email = spec["email"].strip().lower()
+                label = spec.get("label", spec["role"].value.capitalize())
+                password = spec["password"]
+                role = spec["role"]
+                name = spec.get("name", label)
 
-                record: dict[str, Any] = {
-                    "email": user_spec["email"],
-                }
+                existing = session.query(User).filter(User.email == email).first()
 
-                # Set hashed password column
-                if "password_hash" in user_cols:
-                    record["password_hash"] = password_hash
-                elif "hashed_password" in user_cols:
-                    record["hashed_password"] = password_hash
+                if existing:
+                    if force_update:
+                        existing.name = name
+                        existing.role = role
+                        existing.password_hash = hash_password(password)
+                        existing.is_active = True
+                        existing.updated_at = datetime.now(timezone.utc)
+                        print(f"Updated {label} user ({email}) with new credentials.")
+                    else:
+                        print(
+                            f"{label} user already exists ({email}). (Use --force-update to reset password)"
+                        )
                 else:
-                    record["password_hash"] = password_hash
+                    new_user = User(
+                        email=email,
+                        name=name,
+                        password_hash=hash_password(password),
+                        role=role,
+                        is_active=True,
+                    )
+                    session.add(new_user)
+                    print(f"Created {label} user successfully ({email}).")
 
-                # Set name column
-                if "name" in user_cols:
-                    record["name"] = user_spec["name"]
-                elif "full_name" in user_cols:
-                    record["full_name"] = user_spec["name"]
-
-                # Set role_id foreign key
-                if "role_id" in user_cols:
-                    record["role_id"] = role_id
-
-                # Set role string/enum if column exists
-                if "role" in user_cols:
-                    record["role"] = user_spec["role_name"]
-
-                # Set active status
-                if "is_active" in user_cols:
-                    record["is_active"] = True
-
-                # Timestamps
-                now = datetime.now(timezone.utc)
-                if "created_at" in user_cols:
-                    record["created_at"] = now
-                if "updated_at" in user_cols:
-                    record["updated_at"] = now
-
-                # Construct parameterized INSERT statement
-                cols = ", ".join(record.keys())
-                placeholders = ", ".join(f":{k}" for k in record.keys())
-                insert_query = text(f"INSERT INTO users ({cols}) VALUES ({placeholders})")
-
-                session.execute(insert_query, record)
-                print(f"{user_spec['label']} user created successfully.")
+        print("\nAll initial users processed successfully.")
 
     except SQLAlchemyError as db_err:
-        # Step 11: Rollback on error
         session.rollback()
         print(f"Database error during user bootstrap: {db_err}")
         sys.exit(1)
@@ -202,5 +156,40 @@ def bootstrap_users() -> None:
         session.close()
 
 
+def main():
+    parser = argparse.ArgumentParser(description="Bootstrap Superadmin and Admin users.")
+    parser.add_argument(
+        "--force-update",
+        action="store_true",
+        help="Update existing accounts with new password and name if they already exist",
+    )
+    parser.add_argument("--email", type=str, help="Custom user email")
+    parser.add_argument("--password", type=str, help="Custom user password")
+    parser.add_argument("--name", type=str, help="Custom user display name")
+    parser.add_argument(
+        "--role",
+        type=str,
+        choices=["superadmin", "admin", "clinician", "nurse"],
+        help="Custom user role",
+    )
+
+    args = parser.parse_args()
+
+    if args.email and args.password and args.role:
+        users = [
+            {
+                "role": UserRole(args.role),
+                "email": args.email,
+                "name": args.name or args.email.split("@")[0].capitalize(),
+                "password": args.password,
+                "label": args.role.capitalize(),
+            }
+        ]
+    else:
+        users = get_default_users()
+
+    bootstrap_users(users, force_update=args.force_update)
+
+
 if __name__ == "__main__":
-    bootstrap_users()
+    main()
