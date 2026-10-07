@@ -1,0 +1,24 @@
+# Production Docker Compose specification
+# Note: In production AWS, services are typically orchestrated via ECS/Fargate + RDS.
+# This compose file is provided for production parity testing or standalone container hosts.
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: healthtech_backend_prod
+    restart: always
+    env_file:
+      - .env.production
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
