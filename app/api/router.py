@@ -63,6 +63,28 @@ api_router.add_api_route(
 )
 
 
+@api_router.get("", include_in_schema=False)
+@api_router.get("/", include_in_schema=False)
+@api_router.get("/v1", include_in_schema=False)
+@api_router.get("/v1/", include_in_schema=False)
+def api_status_root():
+    return {
+        "status": "online",
+        "service": "HealthTech Patient Data Management API",
+        "version": "1.0.0",
+        "endpoints": {
+            "health": "/health",
+            "ready": "/ready",
+            "docs": "/docs",
+            "auth": "/api/v1/auth/login",
+            "patients": "/api/v1/patients",
+            "encounters": "/api/v1/encounters",
+            "dashboard": "/api/v1/dashboard/summary",
+            "analytics": "/api/v1/analytics/trends",
+        },
+    }
+
+
 @api_router.get("/health", tags=["Health"], summary="Liveness Health Check", include_in_schema=False)
 def health_check():
     """Liveness probe: verifies that the web service process is active."""

@@ -217,12 +217,21 @@ async def general_exception_handler(request: Request, exc: Exception):
 app.include_router(api_router, prefix="/api")
 
 
-# Friendly redirects to Swagger UI
+# Friendly root and docs endpoints
 @app.get("/", include_in_schema=False)
-def root_redirect():
-    from fastapi.responses import RedirectResponse
+def root_endpoint():
+    if not settings.is_production() or settings.DEBUG:
+        from fastapi.responses import RedirectResponse
 
-    return RedirectResponse(url="/docs")
+        return RedirectResponse(url="/docs")
+    return {
+        "status": "online",
+        "service": settings.APP_NAME,
+        "version": "1.0.0",
+        "api": "/api/v1",
+        "health": "/health",
+        "ready": "/ready",
+    }
 
 
 @app.get("/doc", include_in_schema=False)
