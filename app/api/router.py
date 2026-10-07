@@ -94,10 +94,10 @@ def health_check():
 @api_router.get("/ready", tags=["Health"], summary="Readiness Health Check", include_in_schema=False)
 def readiness_check():
     """Readiness probe: validates database connectivity before accepting customer traffic."""
-    db_ok = check_db_connection()
+    db_ok, err_msg = check_db_connection()
     if not db_ok:
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "not_ready", "database": "disconnected"},
+            content={"status": "not_ready", "database": "disconnected", "error": err_msg},
         )
     return {"status": "ready", "database": "connected"}

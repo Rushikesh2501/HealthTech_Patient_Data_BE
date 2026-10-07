@@ -30,7 +30,8 @@ async def lifespan(app: FastAPI):
     logger.info("Starting %s in %s environment", settings.APP_NAME, settings.APP_ENV)
 
     # Validate database connectivity
-    if check_db_connection():
+    db_ok, _ = check_db_connection()
+    if db_ok:
         logger.info("Database connection established successfully.")
     else:
         logger.warning(
@@ -249,10 +250,10 @@ def health_liveness():
 
 @app.get("/ready", tags=["Health"], summary="Readiness Health Check")
 def health_readiness():
-    db_ok = check_db_connection()
+    db_ok, err_msg = check_db_connection()
     if not db_ok:
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "not_ready", "database": "disconnected"},
+            content={"status": "not_ready", "database": "disconnected", "error": err_msg},
         )
     return {"status": "ready", "database": "connected"}

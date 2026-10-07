@@ -1,20 +1,46 @@
 """Database engine configuration with connection pooling and health checks."""
 
 import logging
-
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+
+def get_normalized_database_url() -> str:
+    url = settings.DATABASE_URL.strip()
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+psycopg://", 1)
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
+        url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+    # Route direct IPv6 Supabase host to IPv4 session pooler automatically if provided
+    if "db.mrlllffauafpdjqvaxts.supabase.co" in url:
+        url = url.replace("db.mrlllffauafpdjqvaxts.supabase.co", "aws-0-ap-south-1.pooler.supabase.com")
+        if "postgres:" in url and "postgres.mrlllffauafpdjqvaxts" not in url:
+            url = url.replace("postgres:", "postgres.mrlllffauafpdjqvaxts:", 1)
+
+    return url
+
+
+normalized_db_url = get_normalized_database_url()
+
 engine_kwargs = {
     "echo": settings.DEBUG and not settings.is_production(),
 }
 
-if "sqlite" in settings.DATABASE_URL:
+if "sqlite" in normalized_db_url:
     engine_kwargs["connect_args"] = {"check_same_thread": False}
+elif os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+    # In Serverless environments, use NullPool to avoid stale pooled sockets across freezes
+    engine_kwargs["poolclass"] = NullPool
+    if "pooler.supabase.com" in normalized_db_url or ":6543" in normalized_db_url:
+        engine_kwargs.setdefault("connect_args", {})
+        engine_kwargs["connect_args"]["prepare_threshold"] = None
 else:
     engine_kwargs.update(
         {
@@ -24,13 +50,12 @@ else:
             "pool_recycle": 1800,  # Recycle connections after 30 minutes
         }
     )
-    # Supabase transaction pooler (port 6543 / Supavisor) compatibility
-    if "pooler.supabase.com" in settings.DATABASE_URL or ":6543" in settings.DATABASE_URL:
+    if "pooler.supabase.com" in normalized_db_url or ":6543" in normalized_db_url:
         engine_kwargs.setdefault("connect_args", {})
         engine_kwargs["connect_args"]["prepare_threshold"] = None
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    normalized_db_url,
     **engine_kwargs,
 )
 
@@ -59,12 +84,12 @@ SessionLocal = sessionmaker(
 )
 
 
-def check_db_connection() -> bool:
+def check_db_connection() -> tuple[bool, str]:
     """Verify that PostgreSQL is reachable and ready to serve queries."""
     try:
         with engine.connect() as connection:
             connection.exec_driver_sql("SELECT 1")
-        return True
+        return True, "connected"
     except Exception as e:
         logger.error("Database healthcheck failed: %s", e)
-        return False
+        return False, str(e)
