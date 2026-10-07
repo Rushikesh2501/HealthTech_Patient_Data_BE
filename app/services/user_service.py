@@ -63,16 +63,19 @@ class UserService:
         )
         created = self.repo.create(new_user)
 
-        self.audit_service.log(
-            action="USER_CREATED",  # type: ignore
-            status="SUCCESS",  # type: ignore
-            user_id=actor.id if actor else None,
-            entity_type="USER",
-            entity_id=str(created.id),
-            request_id=request_id,
-            ip_address=ip_address,
-            details=f"User {created.email} created with role {created.role.value}",
-        )
+        try:
+            self.audit_service.log(
+                action="USER_CREATED",  # type: ignore
+                status="SUCCESS",  # type: ignore
+                user_id=actor.id if actor else None,
+                entity_type="USER",
+                entity_id=str(created.id),
+                request_id=request_id,
+                ip_address=ip_address,
+                details=f"User {created.email} created with role {created.role.value}",
+            )
+        except Exception:
+            pass
         return UserResponse.model_validate(created)
 
     def update_user(
@@ -97,16 +100,19 @@ class UserService:
             user.password_hash = hash_password(data.password)
 
         updated = self.repo.update(user)
-        self.audit_service.log(
-            action="USER_UPDATED",  # type: ignore
-            status="SUCCESS",  # type: ignore
-            user_id=actor.id if actor else None,
-            entity_type="USER",
-            entity_id=str(updated.id),
-            request_id=request_id,
-            ip_address=ip_address,
-            details=f"User {updated.id} updated by {actor.email if actor else 'system'}",
-        )
+        try:
+            self.audit_service.log(
+                action="USER_UPDATED",  # type: ignore
+                status="SUCCESS",  # type: ignore
+                user_id=actor.id if actor else None,
+                entity_type="USER",
+                entity_id=str(updated.id),
+                request_id=request_id,
+                ip_address=ip_address,
+                details=f"User {updated.id} updated by {actor.email if actor else 'system'}",
+            )
+        except Exception:
+            pass
         return UserResponse.model_validate(updated)
 
     def delete_user(
@@ -126,13 +132,16 @@ class UserService:
             )
 
         self.repo.delete(user)
-        self.audit_service.log(
-            action="USER_DELETED",  # type: ignore
-            status="SUCCESS",  # type: ignore
-            user_id=actor.id if actor else None,
-            entity_type="USER",
-            entity_id=str(user_id),
-            request_id=request_id,
-            ip_address=ip_address,
-            details=f"User {user.email} permanently deleted",
-        )
+        try:
+            self.audit_service.log(
+                action="USER_DELETED",  # type: ignore
+                status="SUCCESS",  # type: ignore
+                user_id=actor.id if actor else None,
+                entity_type="USER",
+                entity_id=str(user_id),
+                request_id=request_id,
+                ip_address=ip_address,
+                details=f"User {user.email} permanently deleted",
+            )
+        except Exception:
+            pass
