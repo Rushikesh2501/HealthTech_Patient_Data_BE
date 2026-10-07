@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.constants import Permission
+from app.dependencies.auth import get_current_active_user
 from app.dependencies.database import get_db
 from app.dependencies.permissions import require_permission
 from app.schemas.common import StandardErrorResponse
@@ -26,7 +27,7 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
     response_model=DashboardSummary,
     summary="Get Dashboard Summary Metrics",
     description="Returns aggregate counts: total patients, total encounters, visits today, and active staff.",
-    dependencies=[Depends(require_permission(Permission.ANALYTICS_READ))],
+    dependencies=[Depends(get_current_active_user)],
     responses={
         401: {"model": StandardErrorResponse, "description": "Unauthorized"},
         403: {"model": StandardErrorResponse, "description": "Forbidden - requires analytics.read"},
@@ -44,7 +45,7 @@ def get_dashboard_summary(
     response_model=List[EncounterTrendPoint],
     summary="Get Encounter Volume Trends",
     description="Time-series count of patient encounters and follow-ups grouped by date.",
-    dependencies=[Depends(require_permission(Permission.ANALYTICS_READ))],
+    dependencies=[Depends(get_current_active_user)],
     responses={
         401: {"model": StandardErrorResponse, "description": "Unauthorized"},
         403: {"model": StandardErrorResponse, "description": "Forbidden"},
@@ -66,7 +67,7 @@ def get_encounter_trends(
     response_model=List[DiagnosisDistributionPoint],
     summary="Get Diagnosis Breakdown",
     description="Frequency distribution and percentages of leading diagnoses in the selected window.",
-    dependencies=[Depends(require_permission(Permission.ANALYTICS_READ))],
+    dependencies=[Depends(get_current_active_user)],
     responses={
         401: {"model": StandardErrorResponse, "description": "Unauthorized"},
         403: {"model": StandardErrorResponse, "description": "Forbidden"},
@@ -86,7 +87,7 @@ def get_diagnoses_breakdown(
     response_model=List[AgeDistributionPoint],
     summary="Get Age and Gender Demographics",
     description="Aggregated count of patients across standard clinical age brackets and gender classifications.",
-    dependencies=[Depends(require_permission(Permission.ANALYTICS_READ))],
+    dependencies=[Depends(get_current_active_user)],
     responses={
         401: {"model": StandardErrorResponse, "description": "Unauthorized"},
         403: {"model": StandardErrorResponse, "description": "Forbidden"},
