@@ -13,7 +13,6 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.router import api_router
-from app.api.v1 import v1_router
 from app.core.config import settings
 from app.core.exceptions import AppException
 from app.core.logging import setup_logging
@@ -214,27 +213,22 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-# ---------------------------------------------------------
-# Router Mounting
-# ---------------------------------------------------------
-
-# Standard /api/v1 paths
+# Mount root API router (includes both direct /api/... and versioned /api/v1/...)
 app.include_router(api_router, prefix="/api")
-
-# Also alias directly at /api to support frontends configured without /v1
-app.include_router(v1_router, prefix="/api")
 
 
 # Friendly redirects to Swagger UI
 @app.get("/", include_in_schema=False)
 def root_redirect():
     from fastapi.responses import RedirectResponse
+
     return RedirectResponse(url="/docs")
 
 
 @app.get("/doc", include_in_schema=False)
 def doc_redirect():
     from fastapi.responses import RedirectResponse
+
     return RedirectResponse(url="/docs")
 
 

@@ -18,6 +18,19 @@ def test_list_patients_paginated(client: TestClient, clinician_token: str, sampl
     assert data["pagination"]["total"] >= 1
 
 
+def test_list_patients_unversioned_route(
+    client: TestClient, clinician_token: str, sample_patient: Patient
+):
+    response = client.get(
+        "/api/patients?page=1&pageSize=10",
+        headers={"Authorization": f"Bearer {clinician_token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "data" in data
+    assert "pagination" in data
+
+
 def test_create_patient(client: TestClient, clinician_token: str):
     payload = {
         "age": 28,

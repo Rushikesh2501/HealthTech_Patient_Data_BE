@@ -4,16 +4,63 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.api.v1 import v1_router
+from app.api.v1.ai import router as ai_router
+from app.api.v1.analytics import router as analytics_router
+from app.api.v1.audit_logs import router as audit_router
+from app.api.v1.auth import get_me, login, logout, refresh_token
+from app.api.v1.auth import router as auth_router
+from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.encounters import router as encounters_router
+from app.api.v1.patients import router as patients_router
+from app.api.v1.users import router as users_router
 from app.db.database import check_db_connection
+from app.schemas.auth import LogoutResponse, TokenResponse
+from app.schemas.user import UserResponse
 
 api_router = APIRouter()
 
-# Mount v1 router at /v1
+# 1. Mount versioned API routes under /v1 (e.g., /api/v1/patients)
 api_router.include_router(v1_router)
 
-# Also mount v1 subrouters directly at /api for convenience with frontends omitting /v1
-for sub in v1_router.routes:
-    pass  # We also support direct /v1 paths seamlessly
+# 2. Mount direct resource routes under /api (e.g., /api/patients, /api/auth/login)
+api_router.include_router(auth_router)
+api_router.include_router(users_router)
+api_router.include_router(patients_router)
+api_router.include_router(encounters_router)
+api_router.include_router(dashboard_router)
+api_router.include_router(analytics_router)
+api_router.include_router(ai_router)
+api_router.include_router(audit_router)
+
+# 3. Direct aliases for frontends invoking /api/me, /api/login, etc. without /auth
+api_router.add_api_route(
+    "/me",
+    get_me,
+    methods=["GET"],
+    response_model=UserResponse,
+    include_in_schema=False,
+)
+api_router.add_api_route(
+    "/login",
+    login,
+    methods=["POST"],
+    response_model=TokenResponse,
+    include_in_schema=False,
+)
+api_router.add_api_route(
+    "/refresh",
+    refresh_token,
+    methods=["POST"],
+    response_model=TokenResponse,
+    include_in_schema=False,
+)
+api_router.add_api_route(
+    "/logout",
+    logout,
+    methods=["POST"],
+    response_model=LogoutResponse,
+    include_in_schema=False,
+)
 
 
 @api_router.get("/health", tags=["Health"], summary="Liveness Health Check")

@@ -38,6 +38,22 @@ def test_auth_me_authenticated(client: TestClient, clinician_token: str, clinici
     assert data["email"] == clinician_user.email
     assert data["role"] == "clinician"
 
+    # Also test /api/auth/me (unversioned auth prefix)
+    resp_auth = client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {clinician_token}"},
+    )
+    assert resp_auth.status_code == 200
+    assert resp_auth.json()["email"] == clinician_user.email
+
+    # Also test /api/me (direct alias)
+    resp_direct = client.get(
+        "/api/me",
+        headers={"Authorization": f"Bearer {clinician_token}"},
+    )
+    assert resp_direct.status_code == 200
+    assert resp_direct.json()["email"] == clinician_user.email
+
 
 def test_auth_me_unauthorized(client: TestClient):
     response = client.get("/api/v1/auth/me")
