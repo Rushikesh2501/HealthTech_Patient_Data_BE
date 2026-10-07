@@ -7,16 +7,17 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.constants import AuditAction, AuditStatus
-from app.core.exceptions import AuthenticationError
+from app.core.exceptions import AuthenticationError, BadRequestError
 from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
     verify_password,
+    hash_password,
 )
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
-from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.auth import ChangePasswordRequest, ChangePasswordResponse, LoginRequest, TokenResponse
 from app.schemas.user import UserResponse
 from app.services.audit_service import AuditService
 
@@ -146,4 +147,38 @@ class AuthService:
             request_id=request_id,
             ip_address=ip_address,
             details=f"User {user.email} logged out",
+        )
+
+    def change_password(
+        self,
+        current_user: User,
+        payload: ChangePasswordRequest,
+        ip_address: Optional[str] = None,
+        request_id: Optional[str] = None,
+    ) -> ChangePasswordResponse:
+        if not verify_password(payload.old_password, current_user.password_hash):
+            raise AuthenticationError("Current password is incorrect", code="INVALID_CURRENT_PASSWORD")
+
+        if payload.new_password == payload.old_password:
+            raise BadRequestError("New password cannot be the same as the current password", code="SAME_PASSWORD")
+
+        current_user.password_hash = hash_password(payload.new_password)
+        self.user_repo.update(current_user)
+
+        try:
+            self.audit_service.log(
+                action=AuditAction.LOGOUT,
+                status=AuditStatus.SUCCESS,
+                user_id=current_user.id,
+                entity_type="USER",
+                entity_id=str(current_user.id),
+                request_id=request_id,
+                ip_address=ip_address,
+                details=f"User {current_user.email} changed password; session invalidated",
+            )
+        except Exception:
+            pass
+
+        return ChangePasswordResponse(
+            message="Password changed successfully. Please log in again with your new credentials."
         )

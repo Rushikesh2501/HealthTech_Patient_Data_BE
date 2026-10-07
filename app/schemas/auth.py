@@ -35,3 +35,14 @@ class TokenResponse(BaseModel):
 
 class LogoutResponse(BaseModel):
     message: str = "Logged out successfully"
+
+
+class ChangePasswordRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    old_password: str = Field(min_length=1, alias="oldPassword")
+    new_password: str = Field(min_length=8, max_length=128, alias="newPassword")
+
+
+class ChangePasswordResponse(BaseModel):
+    message: str = "Password updated successfully. Please log in again."

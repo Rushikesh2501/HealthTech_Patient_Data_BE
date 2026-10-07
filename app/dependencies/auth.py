@@ -60,6 +60,7 @@ def get_current_user(
 
     # Attach current user to request state for middleware or audit loggers
     request.state.current_user = user
+    request.state.user_id = user.id
     return user
 
 

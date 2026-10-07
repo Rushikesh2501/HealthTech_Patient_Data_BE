@@ -29,7 +29,11 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 
         # Structured request logging
         client_ip = request.client.host if request.client else "unknown"
-        user_id = getattr(getattr(request.state, "current_user", None), "id", "anonymous")
+        try:
+            user_obj = getattr(request.state, "current_user", None)
+            user_id = getattr(request.state, "user_id", None) or (getattr(user_obj, "id", None) if user_obj else "anonymous")
+        except Exception:
+            user_id = "anonymous"
 
         logger.info(
             "%s %s %d - %.2fms (req_id: %s, user: %s, ip: %s)",
