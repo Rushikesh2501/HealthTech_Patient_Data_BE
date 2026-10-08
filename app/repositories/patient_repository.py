@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.encounter import Encounter

@@ -69,3 +69,40 @@ def get_current_active_user(
 ) -> User:
     """Convenience alias guaranteeing active status."""
     return current_user
+
+
+def get_optional_current_user(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Gracefully extracts the authenticated User if valid credentials are provided,
+    otherwise returns None without raising an authentication exception.
+    """
+    token: Optional[str] = None
+    if credentials:
+        token = credentials.credentials
+    else:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1]
+
+    if not token:
+        return None
+
+    try:
+        payload = decode_token(token, expected_type="access")
+        user_id_raw = payload.get("sub")
+        if not user_id_raw:
+            return None
+        user_id = int(user_id_raw)
+        user_repo = UserRepository(db)
+        user = user_repo.get_by_id(user_id)
+        if user and user.is_active:
+            request.state.current_user = user
+            request.state.user_id = user.id
+            return user
+    except Exception:
+        return None
+
+    return None

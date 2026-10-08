@@ -9,6 +9,7 @@ from app.api.v1.analytics import router as analytics_router
 from app.api.v1.audit_logs import router as audit_router
 from app.api.v1.auth import get_me, login, logout, refresh_token
 from app.api.v1.auth import router as auth_router
+from app.api.v1.chat import router as chat_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.encounters import router as encounters_router
 from app.api.v1.patients import router as patients_router
@@ -31,6 +32,7 @@ api_router.include_router(dashboard_router, include_in_schema=False)
 api_router.include_router(analytics_router, include_in_schema=False)
 api_router.include_router(ai_router, include_in_schema=False)
 api_router.include_router(audit_router, include_in_schema=False)
+api_router.include_router(chat_router, include_in_schema=False)
 
 # 3. Direct aliases for frontends invoking /api/me, /api/login, etc. without /auth
 api_router.add_api_route(

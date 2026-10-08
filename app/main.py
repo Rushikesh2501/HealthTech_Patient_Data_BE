@@ -71,6 +71,10 @@ OPENAPI_TAGS = [
         "description": "Gemini AI-powered trend analysis based strictly on aggregated metrics.",
     },
     {
+        "name": "AI Medical Chatbot",
+        "description": "Conversational medical expert assistant with strict safety guardrails and health-only domain boundaries.",
+    },
+    {
         "name": "Audit Logs",
         "description": "Immutable audit trails for compliance and access monitoring.",
     },

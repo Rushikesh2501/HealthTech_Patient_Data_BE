@@ -6,10 +6,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.core.constants import Permission
 from app.dependencies.auth import get_current_active_user
 from app.dependencies.database import get_db
-from app.dependencies.permissions import require_permission
 from app.schemas.common import StandardErrorResponse
 from app.schemas.dashboard import (
     AgeDistributionPoint,

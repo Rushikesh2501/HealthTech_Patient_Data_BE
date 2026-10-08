@@ -8,6 +8,7 @@ from app.schemas.analytics import (
 )
 from app.schemas.audit_log import AuditLogFilterParams, AuditLogResponse
 from app.schemas.auth import LoginRequest, LogoutResponse, RefreshTokenRequest, TokenResponse
+from app.schemas.chat import ChatMessage, MedicalChatRequest, MedicalChatResponse
 from app.schemas.common import (
     ApiResponse,
     ErrorDetail,
@@ -76,4 +77,7 @@ __all__ = [
     "UserCreate",
     "UserResponse",
     "UserUpdate",
+    "ChatMessage",
+    "MedicalChatRequest",
+    "MedicalChatResponse",
 ]

@@ -11,10 +11,12 @@ from app.dependencies.database import get_db
 from app.dependencies.permissions import require_permission
 from app.models.user import User
 from app.schemas.ai import AITrendAnalysisRequest, AITrendAnalysisResponse
+from app.schemas.chat import MedicalChatRequest, MedicalChatResponse
 from app.schemas.common import StandardErrorResponse
 from app.services.analytics_service import AnalyticsService
 from app.services.audit_service import AuditService
 from app.services.gemini_service import GeminiService
+from app.services.medical_chat_service import MedicalChatService
 
 router = APIRouter(prefix="/ai", tags=["AI Analytics"])
 
@@ -67,3 +69,22 @@ async def analyze_clinical_trends(
     )
 
     return result
+
+
+@router.post(
+    "/chat",
+    response_model=MedicalChatResponse,
+    summary="Interactive Medical AI Chatbot",
+    description="Conversational medical expert assistant with strict safety guardrails and zero database access.",
+    responses={
+        500: {"model": StandardErrorResponse, "description": "Internal server or AI processing error"},
+    },
+)
+async def chat_with_medical_expert(
+    payload: MedicalChatRequest,
+) -> MedicalChatResponse:
+    chat_service = MedicalChatService()
+    return await chat_service.chat(
+        message=payload.message,
+        history=payload.history,
+    )
